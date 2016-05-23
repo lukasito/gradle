@@ -25,6 +25,7 @@ import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.util.PatternSet;
 import org.gradle.internal.Cast;
+import org.gradle.plugins.ide.eclipse.model.Classpath;
 import org.gradle.plugins.ide.eclipse.model.ClasspathEntry;
 import org.gradle.plugins.ide.eclipse.model.EclipseClasspath;
 import org.gradle.plugins.ide.eclipse.model.SourceFolder;
@@ -40,7 +41,8 @@ import java.util.Set;
 
 public class SourceFoldersCreator {
 
-    public void populateForClasspath(List<ClasspathEntry> entries, final EclipseClasspath classpath) {
+    public List<ClasspathEntry> createSourceFolders(final EclipseClasspath classpath) {
+        List<ClasspathEntry> entries = Lists.newArrayList();
         Function<File, String> provideRelativePath = new Function<File, String>() {
             @Override
             public String apply(File input) {
@@ -51,6 +53,7 @@ public class SourceFoldersCreator {
         List<SourceFolder> trimmedExternals = getExternalSourceFolders(classpath.getSourceSets(), provideRelativePath);
         entries.addAll(regulars);
         entries.addAll(trimmedExternals);
+        return entries;
     }
 
     /**

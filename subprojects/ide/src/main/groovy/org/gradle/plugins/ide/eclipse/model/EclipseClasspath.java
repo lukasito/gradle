@@ -21,8 +21,10 @@ import groovy.lang.Closure;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.plugins.ide.api.XmlFileContentMerger;
+import org.gradle.plugins.ide.eclipse.EclipseWtpPlugin;
 import org.gradle.plugins.ide.eclipse.model.internal.ClasspathFactory;
 import org.gradle.plugins.ide.eclipse.model.internal.FileReferenceFactory;
+import org.gradle.plugins.ide.eclipse.model.internal.WtpAwareDependenciesCreator;
 import org.gradle.plugins.ide.internal.resolver.UnresolvedDependenciesLogger;
 import org.gradle.util.ConfigureUtil;
 
@@ -300,9 +302,9 @@ public class EclipseClasspath {
      * Calculates, resolves and returns dependency entries of this classpath.
      */
     public List<ClasspathEntry> resolveDependencies() {
-        ClasspathFactory classpathFactory = new ClasspathFactory();
-        List<ClasspathEntry> entries = classpathFactory.createEntries(this);
-        new UnresolvedDependenciesLogger().log(classpathFactory.getUnresolvedDependencies(this));
+        ClasspathFactory classpathFactory = project.getPlugins().hasPlugin(EclipseWtpPlugin.class) ? new ClasspathFactory(this, new WtpAwareDependenciesCreator(this)) : new ClasspathFactory(this);
+        List<ClasspathEntry> entries = classpathFactory.createEntries();
+        new UnresolvedDependenciesLogger().log(classpathFactory.getUnresolvedDependencies());
         return entries;
     }
 

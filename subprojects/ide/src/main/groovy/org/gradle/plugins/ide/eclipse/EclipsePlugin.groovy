@@ -29,10 +29,7 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
 import org.gradle.api.internal.ConventionMapping
 import org.gradle.api.internal.IConventionAware
-import org.gradle.api.plugins.GroovyBasePlugin
-import org.gradle.api.plugins.JavaBasePlugin
-import org.gradle.api.plugins.JavaPlugin
-import org.gradle.api.plugins.JavaPluginConvention
+import org.gradle.api.plugins.*
 import org.gradle.api.plugins.scala.ScalaBasePlugin
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskContainer
@@ -42,15 +39,12 @@ import org.gradle.plugins.ear.EarPlugin
 import org.gradle.plugins.ide.api.XmlFileContentMerger
 import org.gradle.plugins.ide.eclipse.internal.EclipseNameDeduper
 import org.gradle.plugins.ide.eclipse.internal.LinkedResourcesCreator
-import org.gradle.plugins.ide.eclipse.model.BuildCommand
-import org.gradle.plugins.ide.eclipse.model.EclipseClasspath
-import org.gradle.plugins.ide.eclipse.model.EclipseModel
-import org.gradle.plugins.ide.eclipse.model.EclipseProject
-import org.gradle.plugins.ide.eclipse.model.Link
+import org.gradle.plugins.ide.eclipse.model.*
 import org.gradle.plugins.ide.internal.IdePlugin
 
 import javax.inject.Inject
 import java.util.concurrent.Callable
+
 /**
  * <p>A plugin which generates Eclipse files.</p>
  */
@@ -85,6 +79,8 @@ class EclipsePlugin extends IdePlugin {
         configureEclipseClasspath(project, model)
 
         hookDeduplicationToTheRoot(project)
+
+        applyEclipseWtpPluginOnWebProjects(project)
     }
 
     void hookDeduplicationToTheRoot(Project project) {
@@ -308,6 +304,26 @@ class EclipsePlugin extends IdePlugin {
                 })
             }
         })
+    }
+
+    private void applyEclipseWtpPluginOnWebProjects(Project project) {
+        Action<AppliedPlugin> action = createActionToApplyEclipsePluginOnWebProjects()
+        project.getPluginManager().withPlugin("war", action);
+        project.getPluginManager().withPlugin("ear", action);
+    }
+
+    private Action<AppliedPlugin> createActionToApplyEclipsePluginOnWebProjects() {
+        return new Action<AppliedPlugin>() {
+            @Override
+            public void execute(AppliedPlugin appliedPlugin) {
+                project.getPluginManager().withPlugin("eclipse", new Action<AppliedPlugin>() {
+                    @Override
+                    public void execute(AppliedPlugin ignore) {
+                        project.getPluginManager().apply("eclipse-wtp");
+                    }
+                });
+            }
+        }
     }
 
     private static <T extends Task> void maybeAddTask(Project project, IdePlugin plugin, String taskName,
