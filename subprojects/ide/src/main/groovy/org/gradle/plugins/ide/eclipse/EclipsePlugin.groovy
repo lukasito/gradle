@@ -319,7 +319,9 @@ class EclipsePlugin extends IdePlugin {
                 project.getPluginManager().withPlugin("eclipse", new Action<AppliedPlugin>() {
                     @Override
                     public void execute(AppliedPlugin ignore) {
-                        project.getPluginManager().apply("eclipse-wtp");
+                        if (!project.getPluginManager().hasPlugin("eclipse")) {
+                            project.getPluginManager().apply("eclipse-wtp");
+                        }
                     }
                 });
             }

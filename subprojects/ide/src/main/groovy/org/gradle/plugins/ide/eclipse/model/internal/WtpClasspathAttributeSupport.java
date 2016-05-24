@@ -26,6 +26,7 @@ import org.gradle.plugins.ide.eclipse.model.Library;
 import org.gradle.plugins.ide.eclipse.model.ProjectDependency;
 import org.gradle.plugins.ide.internal.IdeDependenciesExtractor;
 import org.gradle.plugins.ide.internal.resolver.model.IdeExtendedRepoFileDependency;
+import org.gradle.plugins.ide.internal.resolver.model.IdeLocalFileDependency;
 
 import java.io.File;
 import java.util.Collection;
@@ -65,11 +66,16 @@ public class WtpClasspathAttributeSupport {
             resultVersions.add(dependency.getId());
             resultFiles.add(dependency.getFile());
         }
+
+        Collection<IdeLocalFileDependency> localDependencies = depsExtractor.extractLocalFileDependencies(configs, minusConfigs);
+        for (IdeLocalFileDependency dependency : localDependencies) {
+            resultFiles.add(dependency.getFile());
+        }
     }
 
 
     public Map<String, Object> createDeploymentAttribute(ClasspathEntry entry) {
-        if (entry instanceof Library) {
+        if (entry instanceof AbstractLibrary) {
             return createDeploymentAttribute((AbstractLibrary) entry);
         } else if (entry instanceof ProjectDependency) {
             return createDeploymentAttribute((ProjectDependency)entry);

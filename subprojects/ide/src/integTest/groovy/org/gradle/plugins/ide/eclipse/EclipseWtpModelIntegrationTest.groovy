@@ -17,6 +17,7 @@
 package org.gradle.plugins.ide.eclipse
 
 import org.gradle.integtests.fixtures.TestResources
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import spock.lang.Issue
@@ -86,12 +87,16 @@ eclipse {
 
         component = getFile([:], '.settings/org.eclipse.wst.common.component').text
         def facet = getFile([:], '.settings/org.eclipse.wst.common.project.facet.core.xml').text
+        def classpath = getFile([:], '.classpath').text
 
         //then component:
         contains('someExtraSourceDir')
 
-        contains('foo-1.0.jar', 'bar-1.0.jar')
-        assert !component.contains('baz-1.0.jar')
+        assert classpath.contains('foo-1.0.jar')
+        assert classpath.contains('bar-1.0.jar')
+        assert !classpath.contains('baz-1.0.jar')
+//        contains('foo-1.0.jar', 'bar-1.0.jar')
+//        assert !component.contains('baz-1.0.jar')
 
         contains('someBetterDeployName')
 
@@ -137,11 +142,12 @@ configurations.all {
 
         //when
         component = getFile([:], '.settings/org.eclipse.wst.common.component').text
+        def classpath = getFile([:], '.classpath').text
 
         //then
-        assert component.contains('foo-1.0.jar')
-        assert component.contains('baz-2.0.jar') //forced version
-        assert !component.contains('bar') //excluded
+        assert classpath.contains('foo-1.0.jar')
+        assert classpath.contains('baz-2.0.jar') //forced version
+        assert !classpath.contains('bar') //excluded
     }
 
     @Test
@@ -278,10 +284,11 @@ eclipse {
 }
         """
 
-        def component = getFile([:], '.settings/org.eclipse.wst.common.component').text
-        assert component.contains('foo.txt')
-        assert component.contains('bar.txt')
-        assert !component.contains('baz.txt')
+        // TODO (donat) should we add local file dependencies to the component descriptor?
+        def classpath = getFile([:], '.classpath').text
+        assert classpath.contains('foo.txt')
+        assert classpath.contains('bar.txt')
+        assert !classpath.contains('baz.txt')
     }
 
     @Test
@@ -485,6 +492,7 @@ project(':contrib') {
 
     @Test
     @Issue("GRADLE-1707")
+    @Ignore // TODO (donat) think about in what case should a dependency excluded and add test coverage for that
     void "the library and variable classpath entries are marked as component non-dependency"() {
         //given
         file('libs/myFoo.jar').touch()
@@ -570,13 +578,14 @@ project(':contrib') {
 
             project(':someLib') {
                 apply plugin: 'java'
+                apply plugin: 'war'
                 apply plugin: 'eclipse-wtp'
 
                 repositories { mavenCentral() }
 
                 dependencies {
-                  compile 'commons-io:commons-io:1.4'
-                  compile files('libs/myFoo.jar')
+                  runtime 'commons-io:commons-io:1.4'
+                  runtime files('libs/myFoo.jar')
                 }
 
                 eclipse.pathVariables MY_LIBS: file('libs')
@@ -589,8 +598,8 @@ project(':contrib') {
         //then
         def classpath = classpath('someLib')
 
-        classpath.lib('commons-io-1.4.jar').assertIsDeployedTo('../')
-        classpath.lib('myFoo.jar').assertIsDeployedTo('../')
+        classpath.lib('commons-io-1.4.jar').assertIsDeployedTo('/WEB-INF/lib')
+        classpath.lib('myFoo.jar').assertIsDeployedTo('/WEB-INF/lib')
     }
 
     protected def contains(String ... contents) {

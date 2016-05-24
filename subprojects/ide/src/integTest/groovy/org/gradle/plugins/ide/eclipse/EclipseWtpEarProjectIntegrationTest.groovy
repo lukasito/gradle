@@ -18,10 +18,12 @@
 package org.gradle.plugins.ide.eclipse
 
 class EclipseWtpEarProjectIntegrationTest extends AbstractEclipseIntegrationSpec {
+    // TODO (donat) how to handle ear project dependencies when the project is not a Java project? (imho an ear project is a Java project as it comes from Java EE)
     def "generates configuration files for an ear project"() {
         settingsFile << "rootProject.name = 'ear'"
 
         buildFile << """
+apply plugin: 'java'
 apply plugin: 'eclipse-wtp'
 apply plugin: 'ear'
 
@@ -42,10 +44,12 @@ dependencies {
 
         // Builders and natures
         def project = project
-        project.assertHasNatures("org.eclipse.wst.common.project.facet.core.nature",
+        project.assertHasNatures("org.eclipse.jdt.core.javanature",
+                "org.eclipse.wst.common.project.facet.core.nature",
                 "org.eclipse.wst.common.modulecore.ModuleCoreNature",
                 "org.eclipse.jem.workbench.JavaEMFNature")
-        project.assertHasBuilders("org.eclipse.wst.common.project.facet.core.builder",
+        project.assertHasBuilders("org.eclipse.jdt.core.javabuilder",
+                "org.eclipse.wst.common.project.facet.core.builder",
                 "org.eclipse.wst.validation.validationbuilder")
 
         // TODO - classpath
@@ -57,10 +61,12 @@ dependencies {
         facets.assertFacetVersion("jst.ear", "5.0")
 
         // Deployment
+        def classpath = classpath
+        classpath.lib('guava-18.0.jar').assertIsDeployedTo('/')
+
         def component = wtpComponent
         component.deployName == 'ear'
         component.resources.isEmpty()
-        component.modules.size() == 1
-        component.lib('guava-18.0.jar').assertDeployedAt('/')
+        component.modules.isEmpty()
     }
 }

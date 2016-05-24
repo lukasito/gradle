@@ -16,6 +16,7 @@
 
 package org.gradle.plugins.ide.eclipse.model.internal;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -83,8 +84,10 @@ public class WtpAwareDependenciesCreator extends DependenciesCreator {
         List<AbstractClasspathEntry> dependencyEntries = super.createDependencyEntries();
         WtpClasspathAttributeSupport wtpSupport = new WtpClasspathAttributeSupport(dependenciesExtractor, utilityProject, libDirName, wtpRootConfigs, wtpLibConfigs, wtpMinusConfigs);
         for (AbstractClasspathEntry entry : dependencyEntries) {
-            Map<String, Object> attribute = wtpSupport.createDeploymentAttribute(entry);
-            entry.getEntryAttributes().putAll(attribute);
+            Map<String, Object> attributes = Maps.newHashMap();
+            attributes.putAll(entry.getEntryAttributes());
+            attributes.putAll(wtpSupport.createDeploymentAttribute(entry));
+            entry.setEntryAttributes(attributes);
         }
         return dependencyEntries;
     }
