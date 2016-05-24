@@ -250,7 +250,7 @@ public abstract class AbstractClasspathEntry implements ClasspathEntry {
         return "{path='" + path + "', nativeLibraryLocation='" + getNativeLibraryLocation() + "', exported=" + exported + ", accessRules=" + accessRules + "}";
     }
 
-    public void setEntryAttributes(Map<String,Object> entryAttributes) {
+    public void setEntryAttributes(Map<String, Object> entryAttributes) {
         this.entryAttributes = entryAttributes;
     }
 }
