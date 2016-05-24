@@ -73,7 +73,7 @@ project(':java') {
         // Classpath
         def javaClasspath = classpath('java')
         javaClasspath.assertHasLibs('guava-18.0.jar', 'javax.servlet-api-3.1.0.jar', 'junit-4.12.jar', 'hamcrest-core-1.3.jar')
-        javaClasspath.lib('guava-18.0.jar').assertIsExcludedFromDeployment() // TODO (donat) it' not deployed because the sample is a utillity project; adjust test
+        javaClasspath.lib('guava-18.0.jar').assertIsExcludedFromDeployment() // TODO (donat) it' not deployed because the sample is a utility project; adjust test
         javaClasspath.lib('javax.servlet-api-3.1.0.jar').assertIsExcludedFromDeployment()
         javaClasspath.lib('junit-4.12.jar').assertIsExcludedFromDeployment()
         javaClasspath.lib('hamcrest-core-1.3.jar').assertIsExcludedFromDeployment()
