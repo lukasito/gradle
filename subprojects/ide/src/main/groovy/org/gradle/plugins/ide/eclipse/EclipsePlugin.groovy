@@ -23,13 +23,18 @@ import com.google.common.collect.Sets
 import groovy.transform.CompileStatic
 import org.gradle.api.Action
 import org.gradle.api.JavaVersion
+import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
 import org.gradle.api.internal.ConventionMapping
 import org.gradle.api.internal.IConventionAware
-import org.gradle.api.plugins.*
+import org.gradle.api.plugins.GroovyBasePlugin
+import org.gradle.api.plugins.JavaBasePlugin
+import org.gradle.api.plugins.JavaPlugin
+import org.gradle.api.plugins.JavaPluginConvention
+import org.gradle.api.plugins.WarPlugin
 import org.gradle.api.plugins.scala.ScalaBasePlugin
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskContainer
@@ -39,7 +44,11 @@ import org.gradle.plugins.ear.EarPlugin
 import org.gradle.plugins.ide.api.XmlFileContentMerger
 import org.gradle.plugins.ide.eclipse.internal.EclipseNameDeduper
 import org.gradle.plugins.ide.eclipse.internal.LinkedResourcesCreator
-import org.gradle.plugins.ide.eclipse.model.*
+import org.gradle.plugins.ide.eclipse.model.BuildCommand
+import org.gradle.plugins.ide.eclipse.model.EclipseClasspath
+import org.gradle.plugins.ide.eclipse.model.EclipseModel
+import org.gradle.plugins.ide.eclipse.model.EclipseProject
+import org.gradle.plugins.ide.eclipse.model.Link
 import org.gradle.plugins.ide.internal.IdePlugin
 
 import javax.inject.Inject
@@ -307,23 +316,23 @@ class EclipsePlugin extends IdePlugin {
     }
 
     private void applyEclipseWtpPluginOnWebProjects(Project project) {
-        Action<AppliedPlugin> action = createActionToApplyEclipsePluginOnWebProjects()
-        project.getPluginManager().withPlugin("war", action);
-        project.getPluginManager().withPlugin("ear", action);
+        Action<Plugin<Project>> action = createActionToApplyEclipsePluginOnWebProjects()
+        project.getPlugins().withType(WarPlugin.class, action);
+        project.getPlugins().withType(EarPlugin.class, action);
     }
 
-    private Action<AppliedPlugin> createActionToApplyEclipsePluginOnWebProjects() {
-        return new Action<AppliedPlugin>() {
+    private Action<Plugin<Project>> createActionToApplyEclipsePluginOnWebProjects() {
+        return new Action<Plugin<Project>>() {
             @Override
-            public void execute(AppliedPlugin appliedPlugin) {
-                project.getPluginManager().withPlugin("eclipse", new Action<AppliedPlugin>() {
+            public void execute(Plugin<Project> plugin) {
+                project.getPlugins().withType(EclipsePlugin.class, new Action<EclipsePlugin>() {
                     @Override
-                    public void execute(AppliedPlugin ignore) {
-                        if (!project.getPluginManager().hasPlugin("eclipse")) {
-                            project.getPluginManager().apply("eclipse-wtp");
+                    void execute(EclipsePlugin eclipsePlugin) {
+                        if (!project.getPlugins().hasPlugin(EclipsePlugin.class)) {
+                            project.getPlugins().apply(EclipseWtpPlugin.class);
                         }
                     }
-                });
+                })
             }
         }
     }
