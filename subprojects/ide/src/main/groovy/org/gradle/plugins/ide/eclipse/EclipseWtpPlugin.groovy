@@ -30,18 +30,16 @@ import org.gradle.api.tasks.bundling.War
 import org.gradle.internal.reflect.Instantiator
 import org.gradle.plugins.ear.EarPlugin
 import org.gradle.plugins.ear.EarPluginConvention
+import org.gradle.plugins.ide.eclipse.model.AbstractClasspathEntry
 import org.gradle.plugins.ide.eclipse.model.Classpath
 import org.gradle.plugins.ide.eclipse.model.ClasspathEntry
-import org.gradle.plugins.ide.eclipse.model.EclipseClasspath
 import org.gradle.plugins.ide.eclipse.model.EclipseModel
 import org.gradle.plugins.ide.eclipse.model.EclipseWtp
 import org.gradle.plugins.ide.eclipse.model.Facet
 import org.gradle.plugins.ide.eclipse.model.Facet.FacetType
 import org.gradle.plugins.ide.eclipse.model.WbResource
-import org.gradle.plugins.ide.eclipse.model.internal.ClasspathFactory
-import org.gradle.plugins.ide.eclipse.model.internal.WtpAwareDependenciesCreator
+import org.gradle.plugins.ide.eclipse.model.internal.WtpClasspathAttributeSupport
 import org.gradle.plugins.ide.internal.IdePlugin
-import org.gradle.plugins.ide.internal.resolver.UnresolvedDependenciesLogger
 
 import javax.inject.Inject
 
@@ -89,23 +87,33 @@ class EclipseWtpPlugin extends IdePlugin {
         };
     }
 
-    private void configureEclipseClasspath(Project project, EclipseModel eclipseModel) {
+    private void configureEclipseClasspath(Project project, EclipseModel model) {
         project.plugins.withType(JavaPlugin.class) {
-            eclipseModel.classpath.file.whenMerged { Classpath classpath ->
-                classpath.setEntries(resolveDependencies(eclipseModel.classpath))
+            project.afterEvaluate {
+                model.classpath.plusConfigurations += model.wtp.component.rootConfigurations
+                model.classpath.plusConfigurations += model.wtp.component.libConfigurations
+                model.classpath.minusConfigurations += model.wtp.component.minusConfigurations
+            }
+
+            model.classpath.file.whenMerged { Classpath classpath ->
+                defineWtpDeploymentAttributes(model, classpath)
             }
         }
 
         project.plugins.withType(WarPlugin) {
-            eclipseModel.classpath.containers WEB_LIBS_CONTAINER
+            model.classpath.containers WEB_LIBS_CONTAINER
         }
     }
 
-    private List<ClasspathEntry> resolveDependencies(EclipseClasspath eclipseClasspath) {
-        ClasspathFactory classpathFactory =  new ClasspathFactory(eclipseClasspath, new WtpAwareDependenciesCreator(eclipseClasspath));
-        List<ClasspathEntry> entries = classpathFactory.createEntries();
-        new UnresolvedDependenciesLogger().log(classpathFactory.getUnresolvedDependencies());
-        return entries;
+    private void defineWtpDeploymentAttributes(EclipseModel model, Classpath classpath) {
+        WtpClasspathAttributeSupport wtpSupport = new WtpClasspathAttributeSupport(project, model)
+        for (ClasspathEntry entry : classpath.getEntries()) {
+            if (entry instanceof AbstractClasspathEntry) {
+                AbstractClasspathEntry classpathEntry = (AbstractClasspathEntry) entry;
+                Map<String, Object> wtpEntries = wtpSupport.createDeploymentAttribute(classpathEntry)
+                classpathEntry.getEntryAttributes().putAll(wtpEntries);
+            }
+        }
     }
 
     private void configureEclipseWtpComponent(Project project, EclipseModel model) {

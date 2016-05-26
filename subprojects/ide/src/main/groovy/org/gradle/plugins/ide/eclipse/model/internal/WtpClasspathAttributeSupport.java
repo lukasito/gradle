@@ -18,10 +18,17 @@ package org.gradle.plugins.ide.eclipse.model.internal;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
+import org.gradle.api.plugins.WarPlugin;
+import org.gradle.plugins.ear.Ear;
+import org.gradle.plugins.ear.EarPlugin;
 import org.gradle.plugins.ide.eclipse.model.AbstractLibrary;
 import org.gradle.plugins.ide.eclipse.model.ClasspathEntry;
+import org.gradle.plugins.ide.eclipse.model.EclipseModel;
+import org.gradle.plugins.ide.eclipse.model.EclipseWtp;
+import org.gradle.plugins.ide.eclipse.model.EclipseWtpComponent;
 import org.gradle.plugins.ide.eclipse.model.ProjectDependency;
 import org.gradle.plugins.ide.internal.IdeDependenciesExtractor;
 import org.gradle.plugins.ide.internal.resolver.model.IdeExtendedRepoFileDependency;
@@ -45,16 +52,20 @@ public class WtpClasspathAttributeSupport {
     private final Set<File> rootConfigFiles;
     private final Set<File> libConfigFiles;
 
-
-    public WtpClasspathAttributeSupport(IdeDependenciesExtractor depsExtractor, boolean isUtilityProject,
-                                        String libDirName, Set<Configuration> rootConfigs,
-                                        Set<Configuration> libConfigs, Set<Configuration> minusConfigs) {
-        this.isUtilityProject = isUtilityProject;
-        this.libDirName = libDirName;
+    public WtpClasspathAttributeSupport(Project project, EclipseModel model) {
+        this.isUtilityProject = !project.getPlugins().hasPlugin(WarPlugin.class) && !project.getPlugins().hasPlugin(EarPlugin.class);
+        Ear ear = (Ear) project.getTasks().findByName(EarPlugin.EAR_TASK_NAME);
+        this.libDirName = ear == null ? "/WEB-INF/lib" : ear.getLibDirName();
+        EclipseWtp eclipseWtp = model.getWtp();
+        EclipseWtpComponent wtpComponent = eclipseWtp.getComponent();
+        Set<Configuration> rootConfigs = wtpComponent.getRootConfigurations();
+        Set<Configuration> libConfigs = wtpComponent.getLibConfigurations();
+        Set<Configuration> minusConfigs = wtpComponent.getMinusConfigurations();
         this.rootConfigModuleVersions = Sets.newHashSet();
         this.rootConfigFiles = Sets.newHashSet();
         this.libConfigModuleVersions = Sets.newHashSet();
         this.libConfigFiles = Sets.newHashSet();
+        IdeDependenciesExtractor depsExtractor = new IdeDependenciesExtractor();
         populateVersionsAndFiles(depsExtractor, rootConfigs, minusConfigs, rootConfigModuleVersions, rootConfigFiles);
         populateVersionsAndFiles(depsExtractor, libConfigs, minusConfigs, libConfigModuleVersions, libConfigFiles);
     }
