@@ -15,7 +15,6 @@
  */
 package org.gradle.plugins.ide.eclipse
 
-import org.junit.Ignore
 import org.junit.Test
 import spock.lang.Issue
 
@@ -45,15 +44,22 @@ dependencies {
 
     @Test
     @Issue("GRADLE-2526")
-    @Ignore("TODO (donat) this test should now check the content of the .classpath file")
     void overwritesDependentModules() {
         generateEclipseFilesForWebProject()
         def projectModules = parseComponentFile(project: "web")
-        assert getHandleFilenames(projectModules) == ["java1", "java2", "groovy", "myartifact-1.0.jar", "myartifactdep-1.0.jar"] as Set
+        assert getHandleFilenames(projectModules) == ["java1", "java2", "groovy"] as Set
+        def classpath1 = classpath("web")
+        classpath1.libs.size() == 2
+        classpath1.lib("myartifact-1.0.jar")
+        classpath1.lib("myartifactdep-1.0.jar")
 
         generateEclipseFilesForWebProject("1.2.3")
         def projectModules2 = parseComponentFile(project: "web")
-        assert getHandleFilenames(projectModules2) == ["java1", "java2", "groovy", "myartifact-1.2.3.jar", "myartifactdep-1.0.jar"] as Set
+        assert getHandleFilenames(projectModules2) == ["java1", "java2", "groovy"] as Set
+        def classpath2 = classpath("web")
+        classpath2.libs.size() == 2
+        classpath2.lib("myartifact-1.2.3.jar")
+        classpath2.lib("myartifactdep-1.0.jar")
     }
 
     private generateEclipseFilesForWebProject(myArtifactVersion = "1.0") {
