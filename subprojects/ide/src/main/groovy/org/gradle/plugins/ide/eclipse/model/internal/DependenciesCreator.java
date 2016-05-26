@@ -30,7 +30,6 @@ import org.gradle.plugins.ide.internal.resolver.model.IdeExtendedRepoFileDepende
 import org.gradle.plugins.ide.internal.resolver.model.IdeLocalFileDependency;
 import org.gradle.plugins.ide.internal.resolver.model.IdeProjectDependency;
 import org.gradle.plugins.ide.internal.resolver.model.UnresolvedIdeRepoFileDependency;
-import org.gradle.util.DeprecationLogger;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -86,18 +85,18 @@ public class DependenciesCreator {
 
         Collection<IdeExtendedRepoFileDependency> repoFileDependencies = dependenciesExtractor.extractRepoFileDependencies(classpath.getProject().getDependencies(), getPlusConfig(), getMinusConfigs(), downloadSources, downloadJavadoc);
         for (IdeExtendedRepoFileDependency dependency : repoFileDependencies) {
-            libraries.add(createLibraryEntry(dependency.getFile(), dependency.getSourceFile(), dependency.getJavadocFile(), dependency.getDeclaredConfiguration(), classpath, dependency.getId()));
+            libraries.add(createLibraryEntry(dependency.getFile(), dependency.getSourceFile(), dependency.getJavadocFile(), classpath, dependency.getId()));
         }
 
         Collection<IdeLocalFileDependency> localFileDependencies = dependenciesExtractor.extractLocalFileDependencies(getPlusConfig(), getMinusConfigs());
         for (IdeLocalFileDependency it : localFileDependencies) {
-            libraries.add(createLibraryEntry(it.getFile(), null, null, it.getDeclaredConfiguration(), classpath, null));
+            libraries.add(createLibraryEntry(it.getFile(), null, null, classpath, null));
         }
 
         return libraries;
     }
 
-    private static AbstractLibrary createLibraryEntry(File binary, File source, File javadoc, final String declaredConfigurationName, EclipseClasspath classpath, ModuleVersionIdentifier id) {
+    private static AbstractLibrary createLibraryEntry(File binary, File source, File javadoc, EclipseClasspath classpath, ModuleVersionIdentifier id) {
         FileReferenceFactory referenceFactory = classpath.getFileReferenceFactory();
 
         FileReference binaryRef = referenceFactory.fromFile(binary);
@@ -109,12 +108,6 @@ public class DependenciesCreator {
         out.setJavadocPath(javadocRef);
         out.setSourcePath(sourceRef);
         out.setExported(false);
-        DeprecationLogger.whileDisabled(new Runnable() {
-            @Override
-            public void run() {
-                out.setDeclaredConfigurationName(declaredConfigurationName);
-            }
-        });
         out.setModuleVersion(id);
         return out;
     }
