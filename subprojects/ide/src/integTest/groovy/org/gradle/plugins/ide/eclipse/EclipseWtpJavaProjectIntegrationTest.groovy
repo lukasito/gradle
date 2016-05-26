@@ -16,7 +16,7 @@
 package org.gradle.plugins.ide.eclipse
 
 class EclipseWtpJavaProjectIntegrationTest extends AbstractEclipseIntegrationSpec {
-    // TODO (donat) add test for utility and non-utility projects too
+    // TODO (donat) verify whether there is a test for the non-utility project counterpart
     def "generates configuration files for a Java project"() {
         file('src/main/java').mkdirs()
         file('src/main/resources').mkdirs()
@@ -24,7 +24,6 @@ class EclipseWtpJavaProjectIntegrationTest extends AbstractEclipseIntegrationSpe
         settingsFile << "rootProject.name = 'java'"
 
         buildFile << """
-apply plugin: 'war'
 apply plugin: 'eclipse-wtp'
 apply plugin: 'java'
 
@@ -52,27 +51,23 @@ dependencies {
         // Classpath
         def classpath = classpath
         classpath.assertHasLibs('guava-18.0.jar', 'junit-4.12.jar', 'hamcrest-core-1.3.jar')
-        classpath.lib('guava-18.0.jar').assertIsDeployedTo('/WEB-INF/lib')
+        classpath.lib('guava-18.0.jar').assertIsExcludedFromDeployment() // utility project doesn't have deployable dependencies
         classpath.lib('junit-4.12.jar').assertIsExcludedFromDeployment()
         classpath.lib('hamcrest-core-1.3.jar').assertIsExcludedFromDeployment()
 
         // Facets
         def facets = wtpFacets
-        // for utility projet: facets.assertHasFixedFacets("jst.java")
-        facets.assertHasFixedFacets("jst.java", "jst.web")
-        // for utility project: facets.assertHasInstalledFacets("jst.utility", "jst.java")
-        facets.assertHasInstalledFacets("jst.web", "jst.java")
-        // for utility project: facets.assertFacetVersion("jst.utility", "1.0")
-        //                      facets.assertFacetVersion("jst.java", "6.0"
-        facets.assertFacetVersion("jst.web", "2.4")
+        facets.assertHasFixedFacets("jst.java")
+        facets.assertHasInstalledFacets("jst.utility", "jst.java")
+        facets.assertFacetVersion("jst.utility", "1.0")
         facets.assertFacetVersion("jst.java", "6.0")
 
         // Deployment
         def component = wtpComponent
         component.deployName == 'java'
         component.resources.size() == 2
-        component.sourceDirectory('src/main/java').assertDeployedAt('/WEB-INF/classes')
-        component.sourceDirectory('src/main/resources').assertDeployedAt('/WEB-INF/classes')
+        component.sourceDirectory('src/main/java').assertDeployedAt('/')
+        component.sourceDirectory('src/main/resources').assertDeployedAt('/')
         component.modules.isEmpty() // Deployed via classpath instead
     }
 }
