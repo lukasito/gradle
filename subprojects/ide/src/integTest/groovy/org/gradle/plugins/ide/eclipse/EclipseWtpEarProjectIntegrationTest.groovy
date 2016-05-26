@@ -18,8 +18,51 @@
 package org.gradle.plugins.ide.eclipse
 
 class EclipseWtpEarProjectIntegrationTest extends AbstractEclipseIntegrationSpec {
-    // TODO (donat) how to handle ear project dependencies when the project is not a Java project? (imho an ear project is a Java project as it comes from Java EE)
-    def "generates configuration files for an ear project"() {
+    def "generates configuration files for an non-java ear project"() {
+        settingsFile << "rootProject.name = 'ear'"
+
+        buildFile << """
+apply plugin: 'eclipse-wtp'
+apply plugin: 'ear'
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    deploy 'com.google.guava:guava:18.0'
+}
+"""
+
+        when:
+        run "eclipse"
+
+        then:
+        // This test covers actual behaviour, not necessarily desired behaviour
+
+        // Builders and natures
+        def project = project
+        project.assertHasNatures("org.eclipse.wst.common.project.facet.core.nature",
+            "org.eclipse.wst.common.modulecore.ModuleCoreNature",
+            "org.eclipse.jem.workbench.JavaEMFNature")
+        project.assertHasBuilders("org.eclipse.wst.common.project.facet.core.builder",
+            "org.eclipse.wst.validation.validationbuilder")
+
+        // Facets
+        def facets = wtpFacets
+        facets.assertHasFixedFacets("jst.ear")
+        facets.assertHasInstalledFacets("jst.ear")
+        facets.assertFacetVersion("jst.ear", "5.0")
+
+        // Deployment
+        def component = wtpComponent
+        component.deployName == 'ear'
+        component.resources.isEmpty()
+        component.modules.size() == 1
+        component.lib('guava-18.0.jar').assertDeployedAt('/')
+    }
+
+    def "generates configuration files for a java ear project"() {
         settingsFile << "rootProject.name = 'ear'"
 
         buildFile << """
@@ -45,14 +88,17 @@ dependencies {
         // Builders and natures
         def project = project
         project.assertHasNatures("org.eclipse.jdt.core.javanature",
-                "org.eclipse.wst.common.project.facet.core.nature",
-                "org.eclipse.wst.common.modulecore.ModuleCoreNature",
-                "org.eclipse.jem.workbench.JavaEMFNature")
+            "org.eclipse.wst.common.project.facet.core.nature",
+            "org.eclipse.wst.common.modulecore.ModuleCoreNature",
+            "org.eclipse.jem.workbench.JavaEMFNature")
         project.assertHasBuilders("org.eclipse.jdt.core.javabuilder",
-                "org.eclipse.wst.common.project.facet.core.builder",
-                "org.eclipse.wst.validation.validationbuilder")
+            "org.eclipse.wst.common.project.facet.core.builder",
+            "org.eclipse.wst.validation.validationbuilder")
 
-        // TODO - classpath
+        // Classpath
+        // Deployment
+        def classpath = classpath
+        classpath.lib('guava-18.0.jar').assertIsDeployedTo('/')
 
         // Facets
         def facets = wtpFacets
@@ -61,9 +107,6 @@ dependencies {
         facets.assertFacetVersion("jst.ear", "5.0")
 
         // Deployment
-        def classpath = classpath
-        classpath.lib('guava-18.0.jar').assertIsDeployedTo('/')
-
         def component = wtpComponent
         component.deployName == 'ear'
         component.resources.isEmpty()

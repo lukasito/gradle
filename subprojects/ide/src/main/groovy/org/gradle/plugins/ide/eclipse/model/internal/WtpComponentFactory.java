@@ -20,14 +20,18 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.eclipse.model.EclipseWtpComponent;
+import org.gradle.plugins.ide.eclipse.model.FileReference;
 import org.gradle.plugins.ide.eclipse.model.WbDependentModule;
 import org.gradle.plugins.ide.eclipse.model.WbModuleEntry;
 import org.gradle.plugins.ide.eclipse.model.WbResource;
 import org.gradle.plugins.ide.eclipse.model.WtpComponent;
 import org.gradle.plugins.ide.internal.IdeDependenciesExtractor;
+import org.gradle.plugins.ide.internal.resolver.model.IdeExtendedRepoFileDependency;
+import org.gradle.plugins.ide.internal.resolver.model.IdeLocalFileDependency;
 import org.gradle.plugins.ide.internal.resolver.model.IdeProjectDependency;
 
 import java.io.File;
@@ -46,10 +50,9 @@ public class WtpComponentFactory {
         }
         entries.addAll(wtp.getProperties());
         // for ear files root deps are NOT transitive; wars don't use root deps so this doesn't hurt them
-        // TODO: maybe do this in a more explicit way, via config or something
         Project project = wtp.getProject();
-        entries.addAll(getEntriesFromProjectDependencies(project, configOrEmptySet(wtp.getRootConfigurations()), configOrEmptySet(wtp.getMinusConfigurations()), "/"));
-        entries.addAll(getEntriesFromProjectDependencies(project, configOrEmptySet(wtp.getLibConfigurations()), configOrEmptySet(wtp.getMinusConfigurations()), wtp.getLibDeployPath()));
+        entries.addAll(getEntriesFromConfigurations(project, configOrEmptySet(wtp.getRootConfigurations()), configOrEmptySet(wtp.getMinusConfigurations()), wtp, "/"));
+        entries.addAll(getEntriesFromConfigurations(project, configOrEmptySet(wtp.getLibConfigurations()), configOrEmptySet(wtp.getMinusConfigurations()), wtp, wtp.getLibDeployPath()));
         component.configure(wtp.getDeployName(), wtp.getContextPath(), entries);
     }
 
@@ -72,8 +75,18 @@ public class WtpComponentFactory {
         }
         return result;
     }
+    private List<WbDependentModule> getEntriesFromConfigurations(Project project, Set<Configuration> plusConfigurations, Set<Configuration> minusConfigurations, EclipseWtpComponent wtp, String deployPath) {
+        List<WbDependentModule> entries = Lists.newArrayList();
+        entries.addAll(getEntriesFromProjectDependencies(project, plusConfigurations, minusConfigurations, deployPath));
+        // All dependencies should be declared as Eclipse classpath entries by default. However if the project is not a Java
+        // project, then as a fallback the dependencies are added to the component descriptor. This is useful for EAR
+        // projects which typically are not Java projects.
+        if (!project.getPlugins().hasPlugin(JavaPlugin.class)) {
+            entries.addAll(getEntriesFromLibraries(plusConfigurations, minusConfigurations, wtp, deployPath));
+        }
+        return entries;
+    }
 
-    // must include transitive project dependencies
     private List<WbDependentModule> getEntriesFromProjectDependencies(Project project, Set<Configuration> plusConfigurations, Set<Configuration> minusConfigurations, String deployPath) {
         IdeDependenciesExtractor extractor = new IdeDependenciesExtractor();
         Collection<IdeProjectDependency> dependencies = extractor.extractProjectDependencies(project, plusConfigurations, minusConfigurations);
@@ -91,4 +104,35 @@ public class WtpComponentFactory {
         }
         return projectDependencies;
     }
+
+    private List<WbDependentModule> getEntriesFromLibraries(Set<Configuration> plusConfigurations, Set<Configuration> minusConfigurations, EclipseWtpComponent wtp, String deployPath) {
+        IdeDependenciesExtractor extractor = new IdeDependenciesExtractor();
+        //below is not perfect because we're skipping the unresolved dependencies completely
+        //however, it should be better anyway. Sometime soon we will hopefully change the wtp component stuff
+        Collection<IdeExtendedRepoFileDependency> externals = extractor.resolvedExternalDependencies(plusConfigurations, minusConfigurations);
+        Collection<IdeLocalFileDependency> locals = extractor.extractLocalFileDependencies(plusConfigurations, minusConfigurations);
+
+        Collection<File> libFiles = Lists.newArrayList();
+        for (IdeExtendedRepoFileDependency dependency : externals) {
+            libFiles.add(dependency.getFile());
+        }
+
+        for (IdeLocalFileDependency dependency :locals) {
+            libFiles.add(dependency.getFile());
+        }
+
+        List<WbDependentModule> libraryEntries = Lists.newArrayList();
+        for(File file : libFiles) {
+            libraryEntries.add(createWbDependentModuleEntry(file, wtp.getFileReferenceFactory(), deployPath));
+        }
+        return libraryEntries;
+    }
+
+    private WbDependentModule createWbDependentModuleEntry(File file, FileReferenceFactory fileReferenceFactory, String deployPath) {
+        FileReference ref = fileReferenceFactory.fromFile(file);
+        String handleSnippet = ref.isRelativeToPathVariable() ? "var/" + ref.getPath() : "lib/" + ref.getPath();
+        return new WbDependentModule(deployPath, "module:/classpath/" + handleSnippet);
+    }
+
+
 }

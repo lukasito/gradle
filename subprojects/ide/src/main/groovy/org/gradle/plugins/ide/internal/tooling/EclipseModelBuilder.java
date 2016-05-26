@@ -168,14 +168,21 @@ public class EclipseModelBuilder implements ProjectToolingModelBuilder {
         EclipseClasspath eclipseClasspath = eclipseModel.getClasspath();
 
         eclipseClasspath.setProjectDependenciesOnly(projectDependenciesOnly);
-        Classpath classpath = new Classpath();
-        eclipseClasspath.mergeXmlClasspath(classpath);
+
+        List<ClasspathEntry> classpathEntries;
+        if (eclipseClasspath.getFile() == null) {
+            classpathEntries = eclipseClasspath.resolveDependencies();
+        } else {
+            Classpath classpath = new Classpath();
+            eclipseClasspath.mergeXmlClasspath(classpath);
+            classpathEntries = classpath.getEntries();
+        }
 
         final List<DefaultEclipseExternalDependency> externalDependencies = new LinkedList<DefaultEclipseExternalDependency>();
         final List<DefaultEclipseProjectDependency> projectDependencies = new LinkedList<DefaultEclipseProjectDependency>();
         final List<DefaultEclipseSourceDirectory> sourceDirectories = new LinkedList<DefaultEclipseSourceDirectory>();
 
-        for (ClasspathEntry entry : classpath.getEntries()) {
+        for (ClasspathEntry entry : classpathEntries) {
             //we don't handle Variables at the moment because users didn't request it yet
             //and it would probably push us to add support in the tooling api to retrieve the variable mappings.
             if (entry instanceof Library) {
