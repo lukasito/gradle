@@ -257,11 +257,8 @@ public class EclipseModelBuilder implements ProjectToolingModelBuilder {
         List<DefaultClasspathAttribute> result = Lists.newArrayList();
         Map<String, Object> attributes = classpathEntry.getEntryAttributes();
         for (String key : attributes.keySet()) {
-            // TODO (donat) remove the if statement and adjust related tests
-            if (key.startsWith("org.eclipse.jst.component")) {
-                Object value = attributes.get(key);
-                result.add(new DefaultClasspathAttribute(key, value == null ? "" : value.toString()));
-            }
+            Object value = attributes.get(key);
+            result.add(new DefaultClasspathAttribute(key, value == null ? "" : value.toString()));
         }
         return result;
     }
